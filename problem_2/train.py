@@ -12,17 +12,18 @@ from torchvision import transforms
 import numpy as np
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
+from matplotlib import pyplot as plt
 
-from model import ResNet50
+# from model import ResNet50
 
-from utils.metric import mean_class_recall
+# from utils.metric import mean_class_recall
 
 from dataset import Skin7
 
 from losses import NCELoss
 # from loss import class_balanced_loss
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda") #if torch.cuda.is_available() else "cpu")
 
 ###
 transform = transforms.Compose([
@@ -39,7 +40,7 @@ test_transform = transform  # None
 trainset = Skin7(train=True, transform=train_transform, target_transform=None)
 testset = Skin7(train=False, transform=test_transform, target_transform=None)
 
-net = ResNet50()  # None
+net = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True) # ResNet50()  # None
 
 batch_size = 24
 num_workers = 4
@@ -55,27 +56,36 @@ testloader = torch.utils.data.DataLoader(testset,
                                          num_workers=num_workers)
 
 # Loss
-nce = NCELoss().to(device)
+# nce = NCELoss().to(device)
 
 criterion = nn.CrossEntropyLoss().to(device)
 
 # Optmizer
-Lr = 0.01
-optimizer = torch.optim.SGD(net.parameters(), lr=Lr)  # None
+Lr = 1e-4 # 0.01
+# optimizer = torch.optim.SGD(net.parameters(), lr=Lr)  # None
 # optimizer = torch.optim.Adam(model.parameters(), lr = 0.0001)
+# optimizer = torch.optim.SGD(net.parameters(), lr=Lr, momentum=0.9)
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+#                 optimizer, mode='min', factor=0.1, patience=50, verbose=True,
+#                 threshold=1e-4)
+optimizer = torch.optim.Adam(net.parameters(), lr=Lr,
+                           betas=(0.9, 0.999), eps=1e-08, amsgrad=True)
 
-max_epoch = 50
-use_cuda = True  # added
+max_epoch = 50 # 50
+# use_cuda = True  # added
 
 
-def train(model, trainloader, use_cuda):
-    use_cuda = use_cuda
-    model = model.to(device)
+def train(model, trainloader, max_epoch, optimizer):
     model.train()
+    model = model.to(device)
+    loss_list = []
+    # loss_list = [] # added
+    acc_train_list = [] # added
+
     for epoch in range(1, max_epoch + 1):
         running_loss = 0.0
         running_correct = 0
-        print(" -- Epoch {}/{}".format(epoch + 2, max_epoch + 1))  # 1
+        print(" -- Epoch {}/{}".format(epoch, max_epoch))  # 1
 
         # model.train()
         # for batch_idx, ([data,
@@ -83,24 +93,24 @@ def train(model, trainloader, use_cuda):
         for batch_idx, (data, target) in tqdm(enumerate(trainloader)):
         # for data, target in trainloader:
         #     print(data, target)
+
+            images, labels = data.to(device), target.to(device)
             
-            total_loss = [] # added
+            # output forward
+            outputs = model(images)
 
             # set all gradients to zero
             optimizer.zero_grad()
 
             # fetch data
-            images, labels = data, target
-            if use_cuda:
-                images = images.cuda()
-                labels = labels.cuda()
+            # images, labels = data, target
+            # if use_cuda:
+            #     images = images.cuda()
+            #     labels = labels.cuda()
 
             # normalization
             images = (images - images.mean()) / (images.std() + 1e-8)
-
-            # output forward
-            outputs = model(images)
-
+            
             # calculate loss
             loss = criterion(outputs, labels)
             # loss2 = nce()
@@ -110,13 +120,39 @@ def train(model, trainloader, use_cuda):
             loss.backward()
             optimizer.step()
 
+            # loss_list.append(loss.item())
+
             pred = torch.argmax(outputs, dim=1)
             running_loss += loss.item()
             running_correct += torch.sum(pred == labels)
+        
+        # # record loss, accuracy
+        loss = running_loss / len(trainset)
+        loss_list.append(loss)
+        
+        acc_train = running_correct / len(trainset)
+        acc_train_list.append(acc_train.item())
+
+        # running_correct = (pred == labels).float()
+        # acc_train = running_correct.sum() / running_correct.numel()
+        # acc_train_list.append(acc_train.item())
+
             # pass
+        print("Loss {:.4f}, Train Accuracy {:.4f}%".format(
+            loss,
+            acc_train * 100,
+        ))
+    x = np.arange(1, max_epoch+1)
+    y = loss_list
+    plt.title('Training Loss Curve')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.plot(x, y)
+    # plt.show()
+    plt.savefig('training_loss_curve.svg')
+        # return loss, acc_train
 
-
-def test(model, testloader, epoch, use_cuda):
+def test(model, testloader, max_epoch):
     model.eval()
 
     y_true = []
@@ -124,25 +160,36 @@ def test(model, testloader, epoch, use_cuda):
     # for _, ([data, data_aug], target) in enumerate(testloader):
     for _, (data, target) in enumerate(testloader):
         # fetch data
-        images, labels = data, target
-        if use_cuda:
-            images = images.cuda()
-            labels = labels.cuda()
+        images = data.to(device)
+        # predict = torch.argmax(net(data), dim=1)
+        # images, labels = data, target
+        # if use_cuda:
+        #     images = images.cuda()
+        #     labels = labels.cuda()
 
         # model forward
         outputs = model(images)
 
         # record the correct
-        y_pred = torch.argmax(outputs, dim=1)
-        y_true = labels
+        # predict = torch.argmax(outputs, dim=1)
+        predict = torch.argmax(outputs, dim=1).cpu().data.numpy()
+        y_pred.extend(predict)
+        labels = target.cpu().data.numpy()
+        y_true.extend(labels)
         # y_pred = torch.augmax(outputs, dim=1)
         # y_true += torch.sum(y_pred == labels)
         # y_true.append(y_pred if y_pred == labels else '') ##
         # pass
 
-    acc = accuracy_score(y_true, torch.Tensor.tolist(y_pred))
-    print("=> Epoch:{} - val acc: {:.4f}".format(epoch, acc))
+    acc = accuracy_score(y_true, y_pred) # torch.Tensor.tolist
+    print("=> Epoch:{} - Testing Accuracy: {:.4f}".format(max_epoch, acc))
+    # return acc
 
 if __name__ == "__main__":
-    train(model=net, trainloader=trainloader, use_cuda=use_cuda)
-    test(model=net, testloader=testloader, epoch=max_epoch, use_cuda=use_cuda)
+    # print("Loss {:.4f}, Train Accuracy {:.4f}%, Test Accuracy {:.4f}%".format(
+    #     # loss,
+    #     *train(model=net, trainloader=trainloader, use_cuda=use_cuda) * 100,
+    #     test(model=net, testloader=testloader, epoch=max_epoch, use_cuda=use_cuda) * 100
+    # ))
+    train(model=net, trainloader=trainloader, max_epoch=max_epoch, optimizer=optimizer)
+    test(model=net, testloader=testloader, max_epoch=max_epoch)
