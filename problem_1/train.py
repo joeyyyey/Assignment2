@@ -11,6 +11,11 @@ from augmentation import RandomCrop, RandomRotFlip, ToTensor
 
 from model import UNet  # RandomRotation, RandomVerticalFlip, RandomHorizontalFlip, RandomCrop
 from loss import DiceLoss, dice_loss
+import test
+import plot
+from matplotlib import pyplot as plt
+
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Specify patch size for cropping
 patch_size = (112, 112, 80)
@@ -27,29 +32,30 @@ transform = transforms.Compose([
     ToTensor()
 ])
 
-if __name__ == '__main__':
-    max_epoch = 1000
-    batch_size = 2
-    use_cuda = True  # added
+max_epoch = 1000
+batch_size = 2
+use_cuda = False  # added
 
-    # model initialization
-    model = UNet()  # None
+# model initialization
+model = UNet()  # None
 
-    train_dst = LAHeart(split='train', transform=transform)
-    # test_dst = LAHeart(split='test', transform=None)  # commented out
+train_dst = LAHeart(split='train', transform=transform)
+# test_dst = LAHeart(split='test', transform=None)  # commented out
 
-    # Dataloader
-    train_loader = DataLoader(train_dst,
-                              batch_size=batch_size,
-                              shuffle=True,
-                              num_workers=4,
-                              pin_memory=True)
+# Dataloader
+train_loader = DataLoader(train_dst,
+                          batch_size=batch_size,
+                          shuffle=True,
+                          num_workers=4,
+                          pin_memory=True)
 
-    # test_loader = DataLoader(test_dst,
-    #                          batch_size=batch_size,
-    #                          shuffle=False,
-    #                          num_workers=4,
-    #                          pin_memory=True)
+
+def train(model, trainloader, use_cuda, max_epoch):
+    model = model
+
+    train_loader = trainloader
+
+    use_cuda = use_cuda
 
     if use_cuda:
         model = model.cuda()
@@ -59,14 +65,14 @@ if __name__ == '__main__':
     criterion = DiceLoss()
 
     # optimizer
-    Lr = 0.01
+    Lr = 0.001
     # optimizer = torch.optim.SGD(model.parameters(), lr=Lr)  # None
-    optimizer = torch.optim.Adam(model.parameters(),lr = 0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=Lr)
 
     loss_list = []  # added
     acc_train_list = []  # added
-    total = 0 # added
-
+    acc_train = 0  # added
+    total = 0  # added
 
     for epoch in range(max_epoch):
         running_loss = 0.0
@@ -83,9 +89,9 @@ if __name__ == '__main__':
             if use_cuda:
                 images = images.cuda()
                 labels = labels.cuda()
-            
+
             # normalization
-            images = (images - images.mean())/(images.std() + 1e-8)
+            images = (images - images.mean()) / (images.std() + 1e-8)
 
             # model forward
             outputs = model(images)
@@ -109,16 +115,31 @@ if __name__ == '__main__':
         # record loss, accuracy
         loss = running_loss / len(train_dst)
         loss_list.append(loss)
-        running_correct = torch.sum(pred == labels)
-        acc_train = running_correct / total
+        # running_correct += torch.sum(pred == labels)
+        running_correct = (pred == labels).float()
+        # acc_train = running_correct / total
+        acc_train = running_correct.sum() / running_correct.numel()
         acc_train_list.append(acc_train.item())
 
         print("Loss {:.4f}, Train Accuracy {:.4f}%".format(
             loss,
-            acc_train,
+            acc_train * 100,
         ))
 
-        print(len(train_dst))
-        print(running_correct)
+        # plot(x_start=1, x_end=max_epoch, y1=loss_list, y2=None, title='Training Loss Curve', xlabel='Epoch', ylabel='Loss')
+        # print(len(train_dst))
+        # print(running_correct)
 
-        # pass
+    x = np.arange(1, max_epoch)
+    y = loss_list
+    plt.title('Training Loss Curve')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.plot(x, y)
+    plt.show()
+    # pass
+
+
+if __name__ == '__main__':
+    train(model=model, trainloader=train_loader, use_cuda=use_cuda, max_epoch=max_epoch)
+    test(model=model, use_cuda=use_cuda)
