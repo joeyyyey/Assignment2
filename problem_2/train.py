@@ -68,7 +68,8 @@ max_epoch = 50
 use_cuda = True  # added
 
 
-def train(model, trainloader):
+def train(model, trainloader, use_cuda):
+    use_cuda = use_cuda
     model = model.to(device)
     model.train()
     for epoch in range(1, max_epoch + 1):
@@ -83,6 +84,8 @@ def train(model, trainloader):
         # for data, target in trainloader:
         #     print(data, target)
             
+            total_loss = [] # added
+
             # set all gradients to zero
             optimizer.zero_grad()
 
@@ -100,7 +103,9 @@ def train(model, trainloader):
 
             # calculate loss
             loss = criterion(outputs, labels)
+            # loss2 = nce()
 
+            # total_loss = sum(loss+loss2)
             # backward and optimize parameters
             loss.backward()
             optimizer.step()
@@ -111,7 +116,7 @@ def train(model, trainloader):
             # pass
 
 
-def test(model, testloader, epoch):
+def test(model, testloader, epoch, use_cuda):
     model.eval()
 
     y_true = []
@@ -137,3 +142,7 @@ def test(model, testloader, epoch):
 
     acc = accuracy_score(y_true, torch.Tensor.tolist(y_pred))
     print("=> Epoch:{} - val acc: {:.4f}".format(epoch, acc))
+
+if __name__ == "__main__":
+    train(model=net, trainloader=trainloader, use_cuda=use_cuda)
+    test(model=net, testloader=testloader, epoch=max_epoch, use_cuda=use_cuda)
