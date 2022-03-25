@@ -12,24 +12,24 @@ from pathlib import Path
 
 from medpy import metric
 
-from problem_1.model import UNet
+from model import UNet
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    use_cuda = True
+    # use_cuda = False
 
-    model = UNet() # load your model here
+    # model = UNet() # load your model here
 
-    patch_size = (112, 112, 80)
-    stride_xy = 18
-    stride_z = 4
+    # patch_size = (112, 112, 80)
+    # stride_xy = 18
+    # stride_z = 4
 
     # path_list = glob('./datas/test/*.h5')
-    p = Path(Path(__file__).resolve().parent, 'problem1_datas', 'test')
-    path_list = p.glob('*.h5')
+    # p = Path(Path(__file__).resolve().parent, 'problem1_datas', 'test')
+    # path_list = p.glob('*.h5')
 
     # print(path_list)
-    
+def test(model=model, use_cuda=True):
     # testing
     model.eval()
 
@@ -37,6 +37,13 @@ if __name__ == '__main__':
     total = 0
     acc_test = 0
     acc_test_list = []
+
+    patch_size = (112, 112, 80)
+    stride_xy = 18
+    stride_z = 4
+
+    p = Path(Path(__file__).resolve().parent, 'problem1_datas', 'test')
+    path_list = p.glob('*.h5')
 
     for path in path_list:
         images, labels = read_h5(path)
@@ -51,7 +58,7 @@ if __name__ == '__main__':
 
         scores = np.zeros((2, ) + images.shape).astype(np.float32)
         counts = np.zeros(images.shape).astype(np.float32)
-        
+            
         # inference all windows (patches)
         for x in range(0, sx):
             xs = min(stride_xy * x, w - patch_size[0])
@@ -68,24 +75,20 @@ if __name__ == '__main__':
                         out = model(test_patch)
                         out = torch.softmax(out, dim=1)
                         out = out.cpu().data.numpy() # [1, 2, w, h, d]
-                    
+                        
                     # record the predicted scores
                     scores[:, xs:xs+patch_size[0], ys:ys+patch_size[1], zs:zs+patch_size[2]] += out[0, ...]
                     counts[xs:xs+patch_size[0], ys:ys+patch_size[1], zs:zs+patch_size[2]] += 1
-        
+            
         scores = scores / np.expand_dims(counts, axis=0)
         predictions = np.argmax(scores, axis = 0) # final prediction: [w, h, d]
-        test_correct += torch.sum(predictions == labels)
-
-        y_pred = torch.argmax(out, dim=1)
-        y_true = labels
 
         metrics = (metric.binary.dc, metric.binary.jc,metric.binary.asd,metric.binary.hd95)
 
-        # acc_test = test_correct / len(read_h5(path))
-        # acc_test_list.append(acc_test.item())
-        # print("Test Accuracy {:.4f}%".format(
-        #     acc_test
-        # ))
+    # acc_test = test_correct / len(read_h5(path))
+    # acc_test_list.append(acc_test.item())
+    print("Loss {:.4f}".format(
+        metrics
+    ))
 
-        
+     
