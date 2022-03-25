@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     # loss function
     # criterion = nn.CrossEntropyLoss()
-    criterion = DiceLoss()
+#     criterion = DiceLoss()
 
     # optimizer
     Lr = 0.01
@@ -88,7 +88,11 @@ if __name__ == '__main__':
             outputs = model(images)
 
             # calculate loss
-            loss = criterion(outputs, labels)
+            loss_seg = F.cross_entropy(outputs, labels)
+            outputs_soft = F.softmax(outputs, dim=1)
+            loss_seg_dice = dice_loss(outputs_soft[:, 1, :, :, :], labels == 1)
+            loss = 0.5*(loss_seg+loss_seg_dice)
+#             loss = criterion(outputs, labels)
 
             # backward and optimize parameters
             loss.backward()
