@@ -69,6 +69,15 @@ if __name__ == '__main__':
         
         scores = scores / np.expand_dims(counts, axis=0)
         predictions = np.argmax(scores, axis = 0) # final prediction: [w, h, d]
+        test_correct += torch.sum(predictions == labels)
         metrics = (metric.binary.dc, metric.binary.jc,metric.binary.asd,metric.binary.hd95)
+
+        acc_test = test_correct / len(data_test)
+        acc_test_list.append(acc_test.item())
+        print("Loss {:.4f}, Train Accuracy {:.4f}%, Test Accuracy {:.4f}%".format(
+            loss,
+            acc_train * 100,
+            acc_test * 100
+        ))
 
         

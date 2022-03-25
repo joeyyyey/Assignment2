@@ -9,6 +9,7 @@ import torchvision.transforms as transforms
 from augmentation import RandomCrop, RandomRotFlip, ToTensor
 
 from model import UNet  # RandomRotation, RandomVerticalFlip, RandomHorizontalFlip, RandomCrop
+from loss import DiceLoss
 
 # Specify patch size for cropping
 patch_size = (112, 112, 80)
@@ -53,7 +54,8 @@ if __name__ == '__main__':
         model = model.cuda()
 
     # loss function
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    criterion = DiceLoss()
 
     # optimizer
     Lr = 0.01
