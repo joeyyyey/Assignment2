@@ -19,3 +19,13 @@ class DiceLoss(nn.Module):
         dice = (2.*intersection + smooth)/(inputs.sum() + targets.sum() + smooth)  
         
         return 1 - dice
+
+def dice_loss(score, target):
+    target = target.float()
+    smooth = 1e-5
+    intersect = torch.sum(score * target)
+    y_sum = torch.sum(target * target)
+    z_sum = torch.sum(score * score)
+    loss = (2 * intersect + smooth) / (z_sum + y_sum + smooth)
+    loss = 1 - loss
+    return loss
