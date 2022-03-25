@@ -8,6 +8,7 @@ import model
 
 from dataset import LAHeart # added
 from dataset import read_h5
+from pathlib import Path
 
 from medpy import metric
 
@@ -17,13 +18,17 @@ if __name__ == '__main__':
 
     use_cuda = True
 
-    model = UNet # load your model here
+    model = UNet() # load your model here
 
     patch_size = (112, 112, 80)
     stride_xy = 18
     stride_z = 4
 
-    path_list = glob('./datas/test/*.h5')
+    # path_list = glob('./datas/test/*.h5')
+    p = Path(Path(__file__).resolve().parent, 'problem1_datas', 'test')
+    path_list = p.glob('*.h5')
+
+    # print(path_list)
     
     # testing
     model.eval()
@@ -31,6 +36,7 @@ if __name__ == '__main__':
     test_correct = 0
     total = 0
     acc_test = 0
+    acc_test_list = []
 
     for path in path_list:
         images, labels = read_h5(path)
@@ -70,14 +76,16 @@ if __name__ == '__main__':
         scores = scores / np.expand_dims(counts, axis=0)
         predictions = np.argmax(scores, axis = 0) # final prediction: [w, h, d]
         test_correct += torch.sum(predictions == labels)
+
+        y_pred = torch.argmax(out, dim=1)
+        y_true = labels
+
         metrics = (metric.binary.dc, metric.binary.jc,metric.binary.asd,metric.binary.hd95)
 
-        acc_test = test_correct / len(data_test)
-        acc_test_list.append(acc_test.item())
-        print("Loss {:.4f}, Train Accuracy {:.4f}%, Test Accuracy {:.4f}%".format(
-            loss,
-            acc_train * 100,
-            acc_test * 100
-        ))
+        # acc_test = test_correct / len(read_h5(path))
+        # acc_test_list.append(acc_test.item())
+        # print("Test Accuracy {:.4f}%".format(
+        #     acc_test
+        # ))
 
         
