@@ -13,6 +13,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 from tqdm import tqdm
 from matplotlib import pyplot as plt
+# import InfoNCE
 
 # from model import ResNet50
 
@@ -20,22 +21,28 @@ from matplotlib import pyplot as plt
 
 from dataset import Skin7
 
-from losses import NCELoss
+from losses import NCELoss, InfoNCE, ContrastiveLoss
 # from loss import class_balanced_loss
 
 device = torch.device("cuda") #if torch.cuda.is_available() else "cpu")
 
 ###
-transform = transforms.Compose([
+train_transform = transforms.Compose([
     transforms.RandomCrop(size=[112, 112]),
     transforms.RandomVerticalFlip(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(degrees=[0, 360]),
-    transforms.ToTensor(),
+    transforms.ToTensor()
 ])
 
-train_transform = transform  # None
-test_transform = transform  # None
+# train_transform = transform  # None
+test_transform = transforms.Compose([
+    # transforms.RandomCrop(size=[112, 112]),
+    # transforms.RandomVerticalFlip(),
+    # transforms.RandomHorizontalFlip(),
+    # transforms.RandomRotation(degrees=[0, 360]),
+    transforms.ToTensor()
+])
 
 trainset = Skin7(train=True, transform=train_transform, target_transform=None)
 testset = Skin7(train=False, transform=test_transform, target_transform=None)
@@ -57,18 +64,20 @@ testloader = torch.utils.data.DataLoader(testset,
 
 # Loss
 # nce = NCELoss().to(device)
-
+# nce = InfoNCE().to(device)
+# nce = ContrastiveLoss(margin=1.5).to(device)
 criterion = nn.CrossEntropyLoss().to(device)
 
 # Optmizer
 Lr = 1e-4 # 0.01
+weight_decay =1e-4
 # optimizer = torch.optim.SGD(net.parameters(), lr=Lr)  # None
 # optimizer = torch.optim.Adam(model.parameters(), lr = 0.0001)
 # optimizer = torch.optim.SGD(net.parameters(), lr=Lr, momentum=0.9)
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 #                 optimizer, mode='min', factor=0.1, patience=50, verbose=True,
 #                 threshold=1e-4)
-optimizer = torch.optim.Adam(net.parameters(), lr=Lr,
+optimizer = torch.optim.Adam(net.parameters(), lr=Lr, weight_decay= weight_decay,
                            betas=(0.9, 0.999), eps=1e-08, amsgrad=True)
 
 max_epoch = 50 # 50
@@ -113,9 +122,10 @@ def train(model, trainloader, max_epoch, optimizer):
             
             # calculate loss
             loss = criterion(outputs, labels)
-            # loss2 = nce()
 
-            # losses = [loss,loss2]
+            # loss2 = nce(outputs, labels)
+
+            # losses = sum(loss,loss2)
 
             # total_loss = sum(losses)
             # backward and optimize parameters
@@ -127,11 +137,14 @@ def train(model, trainloader, max_epoch, optimizer):
 
             pred = torch.argmax(outputs, dim=1)
             running_loss += loss.item()
+            # running_loss += losses.item()
             running_correct += torch.sum(pred == labels)
         
         # # record loss, accuracy
         loss = running_loss / len(trainset)
+        # losses = running_loss / len(trainset)
         loss_list.append(loss)
+        # loss_list.append(losses)
         
         acc_train = running_correct / len(trainset)
         acc_train_list.append(acc_train.item())
@@ -203,6 +216,9 @@ def test(model, testloader, max_epoch):
         outputs = model(images)
 
         loss = criterion(outputs, labels)
+        # loss2 = nce(outputs, labels)
+
+        # losses = [loss,loss2]
 
         # record the correct
         # predict = torch.argmax(outputs, dim=1)
@@ -213,10 +229,13 @@ def test(model, testloader, max_epoch):
 
         # pred = torch.argmax(outputs, dim=1)
         running_loss += loss.item()
+        # running_loss += losses.item()
         test_correct += torch.sum(predict == labels)
 
     loss = running_loss / len(testset)
+    # losses = running_loss / len(testset)
     loss_list.append(loss)
+    # loss_list.append(losses)
 
     acc_test = test_correct / len(testset)
     acc_test_list.append(acc_test.item())
