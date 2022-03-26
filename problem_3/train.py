@@ -20,6 +20,7 @@ import torch.nn.functional as F
 
 from tqdm import tqdm
 import torch.nn.init as init
+from dataset import Cholec80
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 epochs = 10
@@ -46,20 +47,23 @@ def train(model, train_loader, learning_rate):
         loss_item = 0
 
         for data in tqdm(train_loader):
+
+            images, labels = data.to(device), labels.to(device)
+
+            # fetch data
+            # images, labels = data
+            # if use_cuda:
+            #     images = images.cuda()
+            #     labels = labels.cuda()
+            
+            # model forward
+            outputs = model(images)
+
             # set all gradients to zero
             optimizer.zero_grand()
 
-            # fetch data
-            images, labels = data
-            if use_cuda:
-                images = images.cuda()
-                labels = labels.cuda()
-
             # normalization
             images = (images - images.mean()) / (images.std() + 1e-8)
-
-            # model forward
-            outputs = model(images)
 
             # calculate loss
             loss = loss_layer(outputs, labels)
@@ -88,15 +92,31 @@ def test(model, test_loader):
 
 if __name__ == '__main__':
 
-    model = None
-    traindataset = None
+#     train_transform = transforms.Compose([
+#         transforms.RandomCrop(size=[112, 112]),
+#         transforms.RandomVerticalFlip(),
+#         transforms.RandomHorizontalFlip(),
+#         transforms.RandomRotation(degrees=[0, 360]),
+#         transforms.ToTensor()
+# ])
+#     # train_transform = transform  # None
+#     test_transform = transforms.Compose([
+#         # transforms.RandomCrop(size=[112, 112]),
+#         # transforms.RandomVerticalFlip(),
+#         # transforms.RandomHorizontalFlip(),
+#         # transforms.RandomRotation(degrees=[0, 360]),
+#         transforms.ToTensor()
+#     ])
+    model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True) # None
+    learning_rate = 1e-4
+    traindataset = Cholec80(train=True, transform=None) # None
     train_dataloader = DataLoader(traindataset,
                                   batch_size=32,
                                   shuffle=True,
                                   drop_last=True)
-    testdataset = None
+    testdataset = Cholec80(train=False, transform=None) # None
     test_dataloader = DataLoader(testdataset,
                                  batch_size=32,
                                  shuffle=False,
                                  drop_last=False)
-    train(model, train_dataloader, test_dataloader, learning_rate)
+    train(model=model, train_dataloader=train_dataloader, test_dataloader=test_dataloader, learning_rate=learning_rate)
