@@ -42,7 +42,7 @@ testset = Skin7(train=False, transform=test_transform, target_transform=None)
 
 net = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True) # ResNet50()  # None
 
-batch_size = 24
+batch_size = 24 # 24
 num_workers = 4
 trainloader = torch.utils.data.DataLoader(trainset,
                                           batch_size=batch_size,
@@ -115,8 +115,11 @@ def train(model, trainloader, max_epoch, optimizer):
             loss = criterion(outputs, labels)
             # loss2 = nce()
 
-            # total_loss = sum(loss+loss2)
+            # losses = [loss,loss2]
+
+            # total_loss = sum(losses)
             # backward and optimize parameters
+            # losses.backward()
             loss.backward()
             optimizer.step()
 
@@ -142,25 +145,54 @@ def train(model, trainloader, max_epoch, optimizer):
             loss,
             acc_train * 100,
         ))
+    # x = np.arange(1, max_epoch+1)
+    # y = loss_list
+    # plt.title('Training Loss Curve')
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Loss')
+    # plt.plot(x, y)
+    # # plt.show()
+    # plt.savefig('p2-training_loss.svg')
+
+    # x1 = np.arange(1, max_epoch+1)
+    # y1 = acc_train_list
+    # plt.title('Training Accuracy Curve')
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Accuracy')
+    # plt.plot(x1, y1)
+    # # plt.show()
+    # plt.savefig('p2-training_accuracy.svg')
     x = np.arange(1, max_epoch+1)
-    y = loss_list
-    plt.title('Training Loss Curve')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.plot(x, y)
-    # plt.show()
-    plt.savefig('training_loss_curve.svg')
-        # return loss, acc_train
+    y1 = loss_list
+    y2 = acc_train_list
+    fig, ax1 = plt.subplots()
+    plt.title('Training Curves')
+    ax2 = ax1.twinx()
+    ax1.plot(x, y1, color = 'blue')
+    ax2.plot(x, y2, color = 'orange')
+    ax1.set_xlabel('Epoch', color = 'black')
+    ax1.set_ylabel('Loss', color = 'blue')
+    
+    # secondary y-axis label
+    ax2.set_ylabel('Accuracy', color = 'orange')
+    fig.savefig('p2-training.jpg',
+            format='jpeg',
+            dpi=300)
 
 def test(model, testloader, max_epoch):
     model.eval()
 
     y_true = []
     y_pred = []
+    running_loss = 0.0
+    test_correct = 0
+    loss_list = []
+    acc_test_list = []
     # for _, ([data, data_aug], target) in enumerate(testloader):
     for _, (data, target) in enumerate(testloader):
         # fetch data
         images = data.to(device)
+        labels = target.to(device)
         # predict = torch.argmax(net(data), dim=1)
         # images, labels = data, target
         # if use_cuda:
@@ -170,19 +202,53 @@ def test(model, testloader, max_epoch):
         # model forward
         outputs = model(images)
 
+        loss = criterion(outputs, labels)
+
         # record the correct
         # predict = torch.argmax(outputs, dim=1)
-        predict = torch.argmax(outputs, dim=1).cpu().data.numpy()
+        predict = torch.argmax(outputs, dim=1).cpu()#.data.numpy()
         y_pred.extend(predict)
-        labels = target.cpu().data.numpy()
+        labels = target.cpu()#.data.numpy()
         y_true.extend(labels)
+
+        # pred = torch.argmax(outputs, dim=1)
+        running_loss += loss.item()
+        test_correct += torch.sum(predict == labels)
+
+    loss = running_loss / len(testset)
+    loss_list.append(loss)
+
+    acc_test = test_correct / len(testset)
+    acc_test_list.append(acc_test.item())
         # y_pred = torch.augmax(outputs, dim=1)
         # y_true += torch.sum(y_pred == labels)
         # y_true.append(y_pred if y_pred == labels else '') ##
         # pass
 
     acc = accuracy_score(y_true, y_pred) # torch.Tensor.tolist
-    print("=> Epoch:{} - Testing Accuracy: {:.4f}".format(max_epoch, acc))
+    print("=> Epoch:{} - Test Accuracy: {:.4f}".format(max_epoch, acc))
+    
+    print("Loss {:.4f}, Test Accuracy {:.4f}%".format(
+        loss,
+        acc_test * 100
+    ))
+    # x = np.arange(1, max_epoch+1)
+    # y = loss_list
+    # plt.title('Testing Loss Curve')
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Loss')
+    # plt.plot(x, y)
+    # # plt.show()
+    # plt.savefig('p2-testing_loss.svg')
+
+    # x1 = np.arange(1, max_epoch+1)
+    # y1 = acc_test_list
+    # plt.title('Testing Accuracy Curve')
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Accuracy')
+    # plt.plot(x1, y1)
+    # # plt.show()
+    # plt.savefig('p2-testing_accuracy.svg')
     # return acc
 
 if __name__ == "__main__":
