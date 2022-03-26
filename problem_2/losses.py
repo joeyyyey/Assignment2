@@ -11,7 +11,7 @@ from util import make_sampling_array
 
 import torch
 import torch.nn.functional as F
-
+##############################################################
 class ContrastiveLoss(torch.nn.Module):
 
     def __init__(self, margin=2.0):
@@ -24,7 +24,7 @@ class ContrastiveLoss(torch.nn.Module):
         neg = (label) * torch.pow(torch.clamp(self.margin - euclidean_distance, min=0.0), 2)
         loss_contrastive = torch.mean( pos + neg )
         return loss_contrastive
-
+##############################################################
 class NCELoss(nn.Module):
     """ Class for calculating of the noise-contrasting estimation loss. """
 
@@ -125,6 +125,7 @@ class NCELoss(nn.Module):
         nce_loss = loss_criterion(torch.sigmoid(out_logits), out_labels)
         return nce_loss
 
+##############################################################
 # import torch
 # import torch.nn.functional as F
 
@@ -140,7 +141,7 @@ class ContrastiveLoss(torch.nn.Module):
         neg = (label) * torch.pow(torch.clamp(self.margin - euclidean_distance, min=0.0), 2)
         loss_contrastive = torch.mean( pos + neg )
         return loss_contrastive
-
+##############################################################
 # import torch
 # import torch.nn.functional as F
 # from torch import nn
@@ -263,7 +264,7 @@ def transpose(x):
 def normalize(*xs):
     return [None if x is None else F.normalize(x, dim=-1) for x in xs]
 
-
+##############################################################
 # import math
 
 # import torch
