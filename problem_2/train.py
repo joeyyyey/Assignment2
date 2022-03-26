@@ -1,5 +1,4 @@
 """Trainer
-
     Train all your model here.
 """
 import torch
@@ -21,14 +20,14 @@ from matplotlib import pyplot as plt
 
 from dataset import Skin7
 
-from losses import NCELoss, InfoNCE, ContrastiveLoss
+# from losses import NCELoss, InfoNCE, ContrastiveLoss
 # from loss import class_balanced_loss
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ###
 train_transform = transforms.Compose([
-    transforms.RandomCrop(size=[120, 120]),
+    transforms.RandomCrop(size=[112, 112]),
     transforms.RandomVerticalFlip(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(degrees=[0, 360]),
@@ -38,10 +37,10 @@ train_transform = transforms.Compose([
 # train_transform = transform  # None
 test_transform = transforms.Compose([
     # transforms.RandomCrop(size=[112, 112]),
-    transforms.CenterCrop(size=[140, 140]),
+    transforms.CenterCrop(size=[130, 130]),
     # transforms.RandomVerticalFlip(),
     # transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(degrees=[0, 360]),
+    # transforms.RandomRotation(degrees=[0, 360]),
     transforms.ToTensor()
 ])
 
@@ -215,6 +214,9 @@ def test(model, testloader, max_epoch):
 
         # model forward
         outputs = model(images)
+
+        # normalization
+        images = (images - images.mean()) / (images.std() + 1e-8)
 
         loss = criterion(outputs, labels)
         # loss2 = nce(outputs, labels)
