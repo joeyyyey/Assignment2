@@ -1,4 +1,5 @@
 """Trainer
+
     Train all your model here.
 """
 import torch
@@ -20,14 +21,14 @@ from matplotlib import pyplot as plt
 
 from dataset import Skin7
 
-# from losses import NCELoss, InfoNCE, ContrastiveLoss
+from losses import IndexLinear, NCELoss#, InfoNCE, ContrastiveLoss
 # from loss import class_balanced_loss
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ###
 train_transform = transforms.Compose([
-    transforms.RandomCrop(size=[112, 112]),
+    transforms.RandomCrop(size=[120, 120]),
     transforms.RandomVerticalFlip(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(degrees=[0, 360]),
@@ -37,10 +38,10 @@ train_transform = transforms.Compose([
 # train_transform = transform  # None
 test_transform = transforms.Compose([
     # transforms.RandomCrop(size=[112, 112]),
-    transforms.CenterCrop(size=[130, 130]),
+    transforms.CenterCrop(size=[140, 140]),
     # transforms.RandomVerticalFlip(),
     # transforms.RandomHorizontalFlip(),
-    # transforms.RandomRotation(degrees=[0, 360]),
+    transforms.RandomRotation(degrees=[0, 360]),
     transforms.ToTensor()
 ])
 
@@ -63,7 +64,15 @@ testloader = torch.utils.data.DataLoader(testset,
                                          num_workers=num_workers)
 
 # Loss
-# nce = NCELoss(vocab_size=7).to(device)
+class_freq = [0, 1, 2, 3, 4, 5, 6]
+freq_count = torch.FloatTensor(class_freq)
+noise = freq_count / freq_count.sum()
+# nce_linear = IndexLinear(
+#     embedding_dim= len(trainset), #100,  # input dim
+#     num_classes= 7, #300000,  # output dim
+#     noise=noise,
+# )
+nce = NCELoss(noise=noise).to(device)
 # nce = InfoNCE().to(device)
 # nce = ContrastiveLoss(margin=1.5).to(device)
 criterion = nn.CrossEntropyLoss().to(device)
@@ -123,28 +132,31 @@ def train(model, trainloader, max_epoch, optimizer):
             # calculate loss
             loss = criterion(outputs, labels)
 
-            # loss2 = nce(inputs=outputs, labels=labels)
+            # input = torch.Tensor(200, 100)
+            # target = torch.ones(200, 1).long()
+            loss2 = nce.ce_loss(target_idx=labels)
 
-            # losses = sum(loss,loss2)
+            total_loss = [loss,loss2]
+            losses = sum(total_loss)
 
             # total_loss = sum(losses)
             # backward and optimize parameters
-            # losses.backward()
-            loss.backward()
+            losses.backward()
+            # loss.backward()
             optimizer.step()
 
             # loss_list.append(loss.item())
 
             pred = torch.argmax(outputs, dim=1)
-            running_loss += loss.item()
-            # running_loss += losses.item()
+            # running_loss += loss.item()
+            running_loss += losses.item()
             running_correct += torch.sum(pred == labels)
         
         # # record loss, accuracy
-        loss = running_loss / len(trainset)
-        # losses = running_loss / len(trainset)
-        loss_list.append(loss)
-        # loss_list.append(losses)
+        # loss = running_loss / len(trainset)
+        losses = running_loss / len(trainset)
+        # loss_list.append(loss)
+        loss_list.append(losses)
         
         acc_train = running_correct / len(trainset)
         acc_train_list.append(acc_train.item())
@@ -155,7 +167,8 @@ def train(model, trainloader, max_epoch, optimizer):
 
             # pass
         print("Loss {:.4f}, Train Accuracy {:.4f}%".format(
-            loss,
+            # loss,
+            losses,
             acc_train * 100,
         ))
     # x = np.arange(1, max_epoch+1)
@@ -215,11 +228,10 @@ def test(model, testloader, max_epoch):
         # model forward
         outputs = model(images)
 
-        # normalization
-        images = (images - images.mean()) / (images.std() + 1e-8)
-
         loss = criterion(outputs, labels)
-        # loss2 = nce(outputs, labels)
+        loss2 = nce(outputs, labels)
+
+        losses = sum(loss,loss2)
 
         # losses = [loss,loss2]
 
@@ -231,14 +243,14 @@ def test(model, testloader, max_epoch):
         y_true.extend(labels)
 
         # pred = torch.argmax(outputs, dim=1)
-        running_loss += loss.item()
-        # running_loss += losses.item()
+        # running_loss += loss.item()
+        running_loss += losses.item()
         test_correct += torch.sum(predict == labels)
 
-    loss = running_loss / len(testset)
-    # losses = running_loss / len(testset)
-    loss_list.append(loss)
-    # loss_list.append(losses)
+    # loss = running_loss / len(testset)
+    losses = running_loss / len(testset)
+    # loss_list.append(loss)
+    loss_list.append(losses)
 
     acc_test = test_correct / len(testset)
     acc_test_list.append(acc_test.item())
@@ -251,7 +263,8 @@ def test(model, testloader, max_epoch):
     print("=> Epoch:{} - Test Accuracy: {:.4f}".format(max_epoch, acc))
     
     print("Loss {:.4f}, Test Accuracy {:.4f}%".format(
-        loss,
+        # loss,
+        losses,
         acc_test * 100
     ))
     # x = np.arange(1, max_epoch+1)

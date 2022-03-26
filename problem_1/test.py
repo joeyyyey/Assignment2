@@ -29,7 +29,7 @@ from model import UNet
     # path_list = p.glob('*.h5')
 
     # print(path_list)
-def test(model=model, use_cuda=True):
+def test(model):
     # testing
     model.eval()
 
@@ -47,9 +47,9 @@ def test(model=model, use_cuda=True):
 
     for path in path_list:
         images, labels = read_h5(path)
-        if use_cuda:
-            images = images.cuda()
-            labels = labels.cuda()
+        # if use_cuda:
+        #     images = images.cuda()
+        #     labels = labels.cuda()
 
         w, h, d = images.shape
         sx = math.ceil((w - patch_size[0]) / stride_xy) + 1
@@ -83,12 +83,17 @@ def test(model=model, use_cuda=True):
         scores = scores / np.expand_dims(counts, axis=0)
         predictions = np.argmax(scores, axis = 0) # final prediction: [w, h, d]
 
-        metrics = (metric.binary.dc, metric.binary.jc,metric.binary.asd,metric.binary.hd95)
+        metrics_dc = metric.binary.dc(predictions,labels)
+        metrics_jc = metric.binary.jc(predictions,labels)
+        # metrics_asd = metric.binary.asd(predictions,labels)
+        # metrics_hd95 = metric.binary.hd95(predictions,labels)
 
     # acc_test = test_correct / len(read_h5(path))
     # acc_test_list.append(acc_test.item())
-    print("Loss {:.4f}".format(
-        metrics
-    ))
+    print("dc {:.4f}, jc {:.4f}".format(
+        metrics_dc,
+        metrics_jc,
+        # metrics_asd,
+        # metrics_hd95,
 
-     
+    ))

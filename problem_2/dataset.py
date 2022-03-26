@@ -28,7 +28,8 @@ class Skin7(Dataset):
     """SKin Lesion"""
 
     def __init__(self, root="./datas", train=True, transform=None, target_transform=None): # print(f'target is {target}\n')
-        self._root = os.path.join(root)
+        #self._root = os.path.join(root)
+        self._root = Path(__file__).resolve().parent
         self._transform = transform
         # self._target_transform = target_transform
         self._train = train
@@ -36,6 +37,9 @@ class Skin7(Dataset):
         p = Path(
             Path(__file__).resolve().parent, 'datas', 'annotation',
             'train.csv' if train else 'test.csv')
+
+        print(f'Path(__file__).resolve() = {Path(__file__).resolve()}')
+        print(f'Path(__file__).resolve().parent = {Path(__file__).resolve().parent}')
         self._imfile_label = read_csv(p)
 
     def __getitem__(self, index):
@@ -47,7 +51,7 @@ class Skin7(Dataset):
                    target class.
         """
         imfile, label = self._imfile_label[index]
-        image = Image.open(Path(self._root, 'images', imfile))
+        image = Image.open(Path(self._root,'datas', 'images', imfile))
         image, label = image, label
         # data = image
         if self._transform:
