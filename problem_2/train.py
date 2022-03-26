@@ -24,11 +24,11 @@ from dataset import Skin7
 from losses import NCELoss, InfoNCE, ContrastiveLoss
 # from loss import class_balanced_loss
 
-device = torch.device("cuda") #if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ###
 train_transform = transforms.Compose([
-    transforms.RandomCrop(size=[112, 112]),
+    transforms.RandomCrop(size=[120, 120]),
     transforms.RandomVerticalFlip(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(degrees=[0, 360]),
@@ -38,9 +38,10 @@ train_transform = transforms.Compose([
 # train_transform = transform  # None
 test_transform = transforms.Compose([
     # transforms.RandomCrop(size=[112, 112]),
+    transforms.CenterCrop(size=[140, 140]),
     # transforms.RandomVerticalFlip(),
     # transforms.RandomHorizontalFlip(),
-    # transforms.RandomRotation(degrees=[0, 360]),
+    transforms.RandomRotation(degrees=[0, 360]),
     transforms.ToTensor()
 ])
 
@@ -50,7 +51,7 @@ testset = Skin7(train=False, transform=test_transform, target_transform=None)
 net = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True) # ResNet50()  # None
 
 batch_size = 24 # 24
-num_workers = 4
+num_workers = 4 # 4
 trainloader = torch.utils.data.DataLoader(trainset,
                                           batch_size=batch_size,
                                           shuffle=True,
@@ -63,7 +64,7 @@ testloader = torch.utils.data.DataLoader(testset,
                                          num_workers=num_workers)
 
 # Loss
-# nce = NCELoss().to(device)
+# nce = NCELoss(vocab_size=7).to(device)
 # nce = InfoNCE().to(device)
 # nce = ContrastiveLoss(margin=1.5).to(device)
 criterion = nn.CrossEntropyLoss().to(device)
@@ -123,7 +124,7 @@ def train(model, trainloader, max_epoch, optimizer):
             # calculate loss
             loss = criterion(outputs, labels)
 
-            # loss2 = nce(outputs, labels)
+            # loss2 = nce(inputs=outputs, labels=labels)
 
             # losses = sum(loss,loss2)
 
