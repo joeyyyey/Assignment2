@@ -62,7 +62,9 @@ class Cholec80(Dataset):
         # for p in p_list:
             # for 
             # self._imfile_label = read_csv(p) # train: list of 5 lists of tuples (2)
+        self._p_list = p_list
         self._p_img_list = p_img_list
+        # self._imfile_label = [(img, label) for f in p_list for (img, label) in read_csv(f)]
         self._imfile_label = [(img, label) for f in p_list for (img, label) in read_csv(f)]
 
     def __getitem__(self, index):
@@ -81,12 +83,21 @@ class Cholec80(Dataset):
         #         image, label = image, label
         #         if self._transform:
         #             image = self._transform(image)
-        imfile, label = self._imfile_label[index]
+        # imfile, label = self._imfile_label[index]
+        image_list = []
+        for i, p_current in enumerate(self._p_list):
+            p_current = p_current
+            p_img_current = self._p_img_list[i]
+        imfile_label = read_csv(p_current)
+        # for i, _ in enumerate(self._p_img_list):
+        #     image = Image.open(Path(self._p_img_list[i],imfile))
+        #     image_list.append(image)
         # image = Image.open(Path(self._root, imfile))
-        for p in self._p_img_list:
-            path = p
-            image = Image.open(Path(p, imfile))
-
+        # for p in self._p_img_list:
+        #     path = p
+        #     image = Image.open(Path(p, imfile))
+        imfile, label = imfile_label[index]
+        image = Image.open(Path(p_img_current,imfile))
         image, label = image, label
         if self._transform:
             image = self._transform(image)

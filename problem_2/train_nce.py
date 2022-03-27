@@ -21,7 +21,7 @@ from matplotlib import pyplot as plt
 
 from dataset import Skin7
 
-from losses import IndexLinear, NCELoss#, InfoNCE, ContrastiveLoss
+from losses import IndexLinear, NCELoss, InfoNCE#, ContrastiveLoss
 # from loss import class_balanced_loss
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -38,10 +38,10 @@ train_transform = transforms.Compose([
 # train_transform = transform  # None
 test_transform = transforms.Compose([
     # transforms.RandomCrop(size=[112, 112]),
-    transforms.CenterCrop(size=[140, 140]),
+    transforms.CenterCrop(size=[130, 130]),
     # transforms.RandomVerticalFlip(),
     # transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(degrees=[0, 360]),
+    # transforms.RandomRotation(degrees=[0, 360]),
     transforms.ToTensor()
 ])
 
@@ -52,6 +52,8 @@ net = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True) # Re
 
 batch_size = 24 # 24
 num_workers = 4 # 4
+embedding_size = 112
+embedding_size_test = 130
 trainloader = torch.utils.data.DataLoader(trainset,
                                           batch_size=batch_size,
                                           shuffle=True,
@@ -64,16 +66,17 @@ testloader = torch.utils.data.DataLoader(testset,
                                          num_workers=num_workers)
 
 # Loss
-class_freq = [0, 1, 2, 3, 4, 5, 6]
-freq_count = torch.FloatTensor(class_freq)
-noise = freq_count / freq_count.sum()
+# class_freq = [0, 1, 2, 3, 4, 5, 6]
+# freq_count = torch.FloatTensor(class_freq)
+# noise = freq_count / freq_count.sum()
+
 # nce_linear = IndexLinear(
 #     embedding_dim= len(trainset), #100,  # input dim
 #     num_classes= 7, #300000,  # output dim
 #     noise=noise,
 # )
-nce = NCELoss(noise=noise).to(device)
-# nce = InfoNCE().to(device)
+# nce = NCELoss(noise=noise).to(device)
+nce = InfoNCE().to(device)
 # nce = ContrastiveLoss(margin=1.5).to(device)
 criterion = nn.CrossEntropyLoss().to(device)
 
@@ -134,7 +137,9 @@ def train(model, trainloader, max_epoch, optimizer):
 
             # input = torch.Tensor(200, 100)
             # target = torch.ones(200, 1).long()
-            loss2 = nce.ce_loss(target_idx=labels)
+            query = torch.randn(batch_size, embedding_size)
+            positive_key = torch.randn(batch_size, embedding_size)
+            loss2 = nce(query=query, positive_key=positive_key)
 
             total_loss = [loss,loss2]
             losses = sum(total_loss)
@@ -196,12 +201,12 @@ def train(model, trainloader, max_epoch, optimizer):
     ax2 = ax1.twinx()
     ax1.plot(x, y1, color = 'blue')
     ax2.plot(x, y2, color = 'orange')
-    ax1.set_xlabel('Epoch', color = 'black')
+    ax1.set_xlabel('Epoch')
     ax1.set_ylabel('Loss', color = 'blue')
     
     # secondary y-axis label
     ax2.set_ylabel('Accuracy', color = 'orange')
-    fig.savefig('p2-training.jpg',
+    fig.savefig('p2-training-nce.jpg',
             format='jpeg',
             dpi=300)
 
@@ -229,11 +234,14 @@ def test(model, testloader, max_epoch):
         outputs = model(images)
 
         loss = criterion(outputs, labels)
-        loss2 = nce(outputs, labels)
+        # loss2 = nce(outputs, labels)
 
-        losses = sum(loss,loss2)
+        query = torch.randn(batch_size, embedding_size_test)
+        positive_key = torch.randn(batch_size, embedding_size_test)
+        loss2 = nce(query=query, positive_key=positive_key)
 
-        # losses = [loss,loss2]
+        total_loss = [loss,loss2]
+        losses = sum(total_loss)
 
         # record the correct
         # predict = torch.argmax(outputs, dim=1)
