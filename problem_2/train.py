@@ -25,6 +25,9 @@ from dataset import Skin7
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+mean = [0.486, 0.456, 0.406]
+std = [0.229, 0.224, 0.225]
+
 ###
 train_transform = transforms.Compose([
     transforms.RandomCrop(size=[112, 112]),
@@ -32,16 +35,18 @@ train_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(degrees=[0, 360]),
     transforms.ToTensor()
+    # transforms.Normalize(mean, std)
 ])
 
 # train_transform = transform  # None
 test_transform = transforms.Compose([
     # transforms.RandomCrop(size=[112, 112]),
-    transforms.CenterCrop(size=[130, 130]),
+    transforms.CenterCrop(size=[150, 150]),
     # transforms.RandomVerticalFlip(),
     # transforms.RandomHorizontalFlip(),
     # transforms.RandomRotation(degrees=[0, 360]),
     transforms.ToTensor()
+    # transforms.Normalize(mean, std)
 ])
 
 trainset = Skin7(train=True, transform=train_transform, target_transform=None)
@@ -49,7 +54,7 @@ testset = Skin7(train=False, transform=test_transform, target_transform=None)
 
 net = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True) # ResNet50()  # None
 
-batch_size = 24 # 24
+batch_size = 30 # 24
 num_workers = 4 # 4
 trainloader = torch.utils.data.DataLoader(trainset,
                                           batch_size=batch_size,
@@ -69,20 +74,20 @@ testloader = torch.utils.data.DataLoader(testset,
 criterion = nn.CrossEntropyLoss().to(device)
 
 # Optmizer
-Lr = 1e-4 # 0.01
-weight_decay =1e-4
+Lr = 1e-4/3 # 0.01
+weight_decay =1e-6
 # optimizer = torch.optim.SGD(net.parameters(), lr=Lr)  # None
 # optimizer = torch.optim.Adam(model.parameters(), lr = 0.0001)
 # optimizer = torch.optim.SGD(net.parameters(), lr=Lr, momentum=0.9)
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 #                 optimizer, mode='min', factor=0.1, patience=50, verbose=True,
 #                 threshold=1e-4)
-optimizer = torch.optim.Adam(net.parameters(), lr=Lr, weight_decay= weight_decay,
-                           betas=(0.9, 0.999), eps=1e-08, amsgrad=True)
+optimizer = torch.optim.Adam(net.parameters(), lr=Lr,
+                           betas=(0.9, 0.999), eps=1e-08, weight_decay= weight_decay,
+                           amsgrad=True)
 
 max_epoch = 50 # 50
 # use_cuda = True  # added
-
 
 def train(model, trainloader, max_epoch, optimizer):
     model.train()
@@ -281,3 +286,25 @@ if __name__ == "__main__":
     # ))
     train(model=net, trainloader=trainloader, max_epoch=max_epoch, optimizer=optimizer)
     test(model=net, testloader=testloader, max_epoch=max_epoch)
+
+    # x = np.arange(1,max_epoch+1)
+    # y1 = acc_train_list
+    # y2 = acc_test_list
+    # plt.title("Training and testing accuracy") 
+    # plt.xlabel("Epoch") 
+    # plt.ylabel("Accuracy") 
+    # plt.plot(x,y1)
+    # plt.plot(x,y2)
+    # plt.legend(['Training accuracy', 'Testing accuracy'])
+    # plt.savefig("p2-accuracy.jpg")
+    
+    # x = np.arange(1,max_epoch+1)
+    # y1 = train_loss_list
+    # y2 = test_loss_list
+    # plt.title("Training and testing accuracy") 
+    # plt.xlabel("Epoch") 
+    # plt.ylabel("LOss") 
+    # plt.plot(x,y1)
+    # plt.plot(x,y2)
+    # plt.legend(['Training Loss', 'Testing Loss'])
+    # plt.savefig("p2-loss.jpg")
